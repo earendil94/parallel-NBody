@@ -1,0 +1,39 @@
+#!/bin/bash
+
+#PBS -l nodes=1:ppn=20
+#PBS -l walltime=01:00:00
+#PBS -N NBody_times
+
+VERSIONS="openmp mpi"
+P_MAX=20
+N_MAX=100000
+PATH_TO_DATA="../data/"
+WHOAMI=$(whoami)
+HOSTNAME=$(hostname)
+
+if [ $HOSTNAME == "login2" ]
+then
+    module load cmake
+    module load openmpi
+    module load gcc
+    cd "/home/${WHOAMI}/Brand.Francesco"
+    make
+    cd "/home/${WHOAMI}/Brand.Francesco/scripts"
+else
+    cd ..
+    make
+    cd scripts
+fi
+
+
+for v in $VERSIONS; do
+    FILENAME=${PATH_TO_DATA}${v}.csv
+    for ((p=2;p<P_MAX;p=p*2)); do
+        for ((n=10;n<N_MAX;n=n*10)); do
+            ./run $v $p $n
+            cat ${PATH_TO_DATA}${v}_${p}_${n}.csv >> $FILENAME
+            rm ${PATH_TO_DATA}${v}_${p}_${n}.csv
+        done
+    done
+done
+

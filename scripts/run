@@ -1,0 +1,64 @@
+#!/bin/bash
+#Some variables that we expect as input
+VERSION=$1
+P=$2
+N=$3
+#For now let's keep it simple
+if [ $# -eq 0 ]
+then
+    echo "We need at least the version of the nBody program to run: serial/openmp/mpi/hybrid"
+    exit
+fi
+
+if [ $# -ne 3 ]
+then
+    echo "No input parameters given, default parameters are going to be used"
+    echo "Usage: ./run [VERSION] [# of threads/process] [N]"
+    P=4
+    N=10
+fi
+
+PATH_TO_DATA="../data/"
+FILENAME_OUT="${VERSION}_${P}_${N}.csv"
+
+if [ -e $FILENAME_OUT ]
+then
+    rm ${PATH_TO_DATA}$FILENAME_OUT
+fi
+
+if [ $VERSION == "openmp" ]
+then
+    #IC
+    /usr/bin/time -f%e:elapsed -o tmp.txt mpirun -np ${P} ../initialConditions.x ${N}
+    EXE_TIME=$(cat tmp.txt | grep "elapsed" | cut -d: -f1 )
+    rm tmp.txt
+    export OMP_NUM_THREADS=${P}
+    #Nbody program
+    /usr/bin/time -f%e:elapsed -o tmp.txt ../openBody.x ${N}
+    EXE_TIME_2=$(cat tmp.txt | grep "elapsed" | cut -d: -f1 )
+    rm tmp.txt
+    #Sum of the execution of the two programs
+    TIME=$(bc <<< "scale=4; ${EXE_TIME} + ${EXE_TIME_2}" )
+    echo "${N};${P};${TIME}" >> ${PATH_TO_DATA}${FILENAME_OUT}
+    mv *ic ${PATH_TO_DATA}
+
+elif [ $VERSION == "mpi" ]
+then
+    #ic
+    /usr/bin/time -f%e:elapsed -o tmp.txt mpirun -np ${P} ../initialConditions.x ${N}
+    EXE_TIME=$(cat tmp.txt | grep "elapsed" | cut -d: -f1 )
+    rm tmp.txt
+    #Nbody program
+    /usr/bin/time -f%e:elapsed -o tmp.txt mpirun -np ${P} ../MPIBody.x ${N}
+    EXE_TIME_2=$(cat tmp.txt | grep "elapsed" | cut -d: -f1 )
+    rm tmp.txt
+    #Sum of the execution of the two programs
+    TIME=$(bc <<< "scale=4; ${EXE_TIME} + ${EXE_TIME_2}" )
+    echo "${N};${P};${TIME}" >> ${PATH_TO_DATA}${FILENAME_OUT}
+    mv *ic ${PATH_TO_DATA}
+
+else
+    echo "Unrecognised version, select openmp/mpi"
+    exit
+fi
+   

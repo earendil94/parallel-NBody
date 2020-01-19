@@ -1,0 +1,18 @@
+#!/bin/bash
+
+#PBS -l nodes=4:ppn=20
+#PBS -l walltime=01:00:00
+#PBS -N NBody_hybrid
+
+
+# do this commands after booking 4 full nodes (20 cores each) on old partition of Ulysses
+module purge
+module load openmpi/1.8.3/intel/14.0
+module load impi-trial/5.0.1.035
+export LANG=C
+mpiicc -fopenmp -DDEBUG -o hybridBody.x src/hybridBody.c -std=c99 -lm
+export I_MPI_JOB_RESPECT_PROCESS_PLACEMENT=off         
+export OMP_NUM_THREADS=20                              
+export OMP_PLACES=cores
+export OMP_PROC_BIND=spread
+mpiexec.hydra -n 4 -ppn 1 ./hybridBody.x                   
